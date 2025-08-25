@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimateChic Complete AI</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #27ae60;
+            --primary-dark: #219a52;
+            --secondary: #3498db;
+            --accent: #9b59b6;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --white: #ffffff;
+            --gray: #95a5a6;
+            --border-radius: 12px;
+            --shadow: 0 8px 32px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            min-height: 600px;
+        }
+
+        /* Map Section */
+        .map-section {
+            position: relative;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 3px solid var(--white);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #2980b9 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent) 0%, #8e44ad 100%);
+        }
+
+        .btn-business {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Status */
+        .status {
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .status-info {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--secondary);
+            border-left: 4px solid var(--secondary);
+        }
+
+        .status-success {
+            background: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .status-warning {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning);
+            border-left: 4px solid var(--warning);
+        }
+
+        /* Results */
+        .result-card {
+            background: var(--white);
+            padding: 1.2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--dark);
+        }
+
+        /* Operations */
+        .operations-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .operation-card {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .operation-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        /* Progress bars */
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 0.2rem;
+        }
+
+        .status-on-track {
+            background: rgba(46, 204, 113, 0.2);
+            color: var(--success);
+        }
+
+        .status-delayed {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--danger);
+        }
+
+        .status-behind {
+            background: rgba(243, 156, 18, 0.2);
+            color: var(--warning);
+        }
+
+        /* File Upload */
+        .file-upload {
+            margin: 1rem 0;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: block;
+            padding: 0.8rem;
+            background: var(--light);
+            border: 2px dashed var(--gray);
+            border-radius: var(--border-radius);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .file-label:hover {
+            border-color: var(--primary);
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        /* Business Plan Section */
+        .business-plan-section {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f9f9f9;
+            border-radius: var(--border-radius);
+            border-left: 4px solid #e67e22;
+        }
+
+        .business-plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .business-plan-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .business-plan-content {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: white;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .business-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .business-section h5 {
+            color: #e67e22;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .business-section p {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                max-height: none;
+            }
+        }
+
+        /* Leaflet Draw Controls Styling */
+        .leaflet-draw-toolbar {
+            margin-top: 12px;
+            margin-left: 12px;
+        }
+
+        .leaflet-draw-toolbar a {
+            background-color: var(--white);
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .leaflet-draw-toolbar a:hover {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="header-title">🌱 ClimateChic Complete AI</h1>
+            <p class="header-subtitle">AgroEcoForest Sanctuary Growth</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Map Section -->
+            <div class="map-section">
+                <div class="controls">
+                    <button class="btn" id="drawBtn">
+                        <i class="fas fa-draw-polygon"></i> Draw Boundary
+                    </button>
+                    <button class="btn" id="analyzeBtn" disabled>
+                        <i class="fas fa-brain"></i> Generate Plan
+                    </button>
+                    <button class="btn btn-warning" id="clearBtn">
+                        <i class="fas fa-trash"></i> Clear Map
+                    </button>
+                    <button class="btn btn-secondary" id="uploadBtn">
+                        <i class="fas fa-upload"></i> Upload Shapefile
+                    </button>
+                    <button class="btn btn-accent" id="saveBtn" disabled>
+                        <i class="fas fa-download"></i> Save Boundary
+                    </button>
+                    <button class="btn btn-accent" id="feasibilityBtn" disabled>
+                        <i class="fas fa-calculator"></i> Generate Feasibility
+                    </button>
+                    <button class="btn btn-accent" id="designBtn" disabled>
+                        <i class="fas fa-project-diagram"></i> Generate Farm Design
+                    </button>
+                    <button class="btn btn-business" id="businessPlanBtn" disabled>
+                        <i class="fas fa-file-alt"></i> Generate Business Plan
+                    </button>
+                </div>
+                
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+                
+                <div id="status" class="status status-info">
+                    <i class="fas fa-info-circle"></i> Click "Draw Boundary" to start planning your farm
+                </div>
+
+                <!-- File Upload (Hidden) -->
+                <input type="file" id="shapefileInput" accept=".geojson,.json,.shp,.kml" multiple class="file-input">
+                
+                <!-- Operations Overview -->
+                <div class="operations-grid">
+                    <div class="operation-card">
+                        <div class="operation-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h3>Operations</h3>
+                        <p>Gantt Chart & Calendar</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 65%;"></div>
+                        </div>
+                        <span class="status-indicator status-on-track">On Track</span>
+                    </div>
+                    
+                    <div class="operation-card">
+                        <div class="operation-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <h3>Accounting</h3>
+                        <p>Expenses & Revenue</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%;"></div>
+                        </div>
+                        <span class="status-indicator status-behind">Needs Update</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-seedling"></i> Restoration Plan
+                    </h3>
+                    <div id="result-content">
+                        <div class="result-card">
+                            <h4 class="card-title">Farm Overview</h4>
+                            <p>Draw a boundary or upload a shapefile to generate your restoration plan</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-chart-pie"></i> Quick Stats
+                    </h3>
+                    <div class="result-card">
+                        <h4 class="card-title">Project Status</h4>
+                        <p>• Trees Planted: <strong>0</strong></p>
+                        <p>• Forest Cover: <strong>0%</strong></p>
+                        <p>• chickens: <strong>0</strong></p>
+                        <p>• Progress: <span class="status-indicator status-on-track">Not Started</span></p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-calendar-check"></i> Recent Activities
+                    </h3>
+                    <div class="result-card">
+                        <p><i class="fas fa-plus-circle" style="color: var(--success);"></i> System initialized</p>
+                        <p><i class="fas fa-map-marker-alt" style="color: var(--secondary);"></i> Ready for mapping</p>
+                        <p><i class="fas fa-clock" style="color: var(--warning);"></i> Awaiting boundary input</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-chart-line"></i> Feasibility Study
+                    </h3>
+                    <div id="feasibility-content">
+                        <div class="result-card">
+                            <h4 class="card-title">Feasibility Analysis</h4>
+                            <p>Generate a feasibility study after creating your farm plan</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-project-diagram"></i> Farm Design
+                    </h3>
+                    <div id="design-content">
+                        <div class="result-card">
+                            <h4 class="card-title">Farm Design</h4>
+                            <p>Generate a contour-based farm design after creating your farm plan</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Business Plan Section -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <i class="fas fa-file-alt"></i> Business Plan
+                    </h3>
+                    <div id="business-plan-content">
+                        <div class="result-card">
+                            <h4 class="card-title">Business Plan</h4>
+                            <p>Generate a comprehensive business plan after creating your farm plan</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/shpjs@3.6.3/dist/shp.js"></script>
+    <script>
+        // Initialize variables
+        let map, drawnItems, drawControl, currentPolygon = null;
+        
+        // Initialize the map - ZOOMED TO LUZON, PHILIPPINES
+        function initMap() {
+            // Luzon, Philippines coordinates [latitude, longitude]
+            const luzonCenter = [16.0, 121.0];
+            
+            map = L.map('map').setView(luzonCenter, 7);
+            
+            // Base layers
+            const baseLayers = {
+                "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Esri World Imagery'
+                }),
+                "Terrain": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Esri Terrain'
+                }),
+                "Dark Mode": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: 'CartoDB'
+                }),
+                "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: 'OpenStreetMap'
+                })
+            };
+            
+            baseLayers.Satellite.addTo(map);
+            L.control.layers(baseLayers).addTo(map);
+            
+            // Initialize drawn items layer
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            
+            // Initialize draw control with ALL the tools
+            drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems,
+                    edit: true,
+                    remove: true
+                },
+                draw: {
+                    polygon: {
+                        allowIntersection: false,
+                        showArea: true,
+                        metric: true,
+                        shapeOptions: {
+                            color: '#27ae60',
+                            weight: 3,
+                            fillOpacity: 0.3
+                        }
+                    },
+                    rectangle: {
+                        shapeOptions: {
+                            color: '#27ae60',
+                            weight: 3,
+                            fillOpacity: 0.3
+                        }
+                    },
+                    circle: {
+                        shapeOptions: {
+                            color: '#27ae60',
+                            weight: 3,
+                            fillOpacity: 0.3
+                        }
+                    },
+                    marker: false,
+                    polyline: false
+                }
+            });
+            
+            map.addControl(drawControl);
+            
+            // Add biogeographic regions for Luzon
+            addBiogeographicRegions();
+            
+            // Setup event listeners
+            setupEventListeners();
+        }
+
+      
+        // Add biogeographic regions for Luzon, Philippines
+        function addBiogeographicRegions() {
+            const regions = [
+                {
+                    name: "Northern Luzon Highlands",
+                    bounds: [[16.5, 120.5], [18.5, 121.5]],
+                    color: '#27ae60'
+                },
+                {
+                    name: "Central Luzon Plains", 
+                    bounds: [[15.0, 120.5], [16.5, 121.5]],
+                    color: '#f39c12'
+                },
+                {
+                    name: "Southern Luzon Forest",
+                    bounds: [[13.5, 121.0], [15.0, 122.0]],
+                    color: '#3498db'
+                },
+                {
+                    name: "Bicol Peninsula",
+                    bounds: [[13.0, 123.0], [14.0, 124.0]],
+                    color: '#9b59b6'
+                }
+            ];
+            
+            regions.forEach(region => {
+                const rectangle = L.rectangle(region.bounds, {
+                    color: region.color,
+                    weight: 2,
+                    fillOpacity: 0.1
+                }).addTo(map);
+                
+                rectangle.bindPopup(`<strong>${region.name}</strong><br>Biogeographic Region of Luzon`);
+            });
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            console.log("Setting up event listeners...");
+            
+            // Map drawing events
+            map.on(L.Draw.Event.CREATED, function (e) {
+                console.log("Drawing created event fired");
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                currentPolygon = layer;
+                updateUI();
+                
+                // Calculate area using proper method
+                const area = calculateArea(layer);
+                
+                layer.bindPopup(`Farm Boundary: ${area.toFixed(2)} hectares`).openPopup();
+                
+                document.getElementById('status').textContent = `Boundary drawn! Area: ${area.toFixed(2)} hectares. Click "Generate Restoration Plan" to analyze.`;
+                document.getElementById('status').className = 'status status-success';
+                
+                // Update quick stats
+                updateQuickStats(area);
+                
+                // Enable save button
+                document.getElementById('saveBtn').disabled = false;
+            });
+
+            // Draw button event
+            document.getElementById('drawBtn').addEventListener('click', function() {
+                console.log("Draw button clicked");
+                // Activate polygon drawing mode
+                new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+                document.getElementById('status').textContent = 'Click on the map to start drawing your farm boundary. Double-click to finish.';
+                document.getElementById('status').className = 'status status-info';
+            });
+            
+            document.getElementById('analyzeBtn').addEventListener('click', function() {
+                console.log("Analyze button clicked");
+                analyzeLand();
+            });
+            
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                console.log("Clear button clicked");
+                clearMap();
+            });
+            
+            // Upload shapefile button
+            document.getElementById('uploadBtn').addEventListener('click', function() {
+                document.getElementById('shapefileInput').click();
+            });
+            
+            // Shapefile input change
+            document.getElementById('shapefileInput').addEventListener('change', function(e) {
+                handleShapefileUpload(e.target.files);
+            });
+            
+            // Save boundary button
+            document.getElementById('saveBtn').addEventListener('click', function() {
+                saveBoundaryAsGeoJSON();
+            });
+            
+            // Feasibility study button
+            document.getElementById('feasibilityBtn').addEventListener('click', function() {
+                console.log("Feasibility button clicked");
+                generateFeasibilityStudy();
+            });
+            
+            // Farm design button
+            document.getElementById('designBtn').addEventListener('click', function() {
+                console.log("Design button clicked");
+                generateFarmDesign();
+            });
+            
+            // Business plan button
+            document.getElementById('businessPlanBtn').addEventListener('click', function() {
+                console.log("Business plan button clicked");
+                generateBusinessPlan();
+            });
+            
+            // Listen for layer changes to update UI
+            map.on('layeradd layerremove', updateUI);
+        }
+        
+        // Handle shapefile upload
+        function handleShapefileUpload(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            const fileName = file.name.toLowerCase();
+            
+            if (fileName.endsWith('.geojson') || fileName.endsWith('.json')) {
+                // Handle GeoJSON upload
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const geojson = JSON.parse(e.target.result);
+                        loadGeoJSON(geojson);
+                    } catch (error) {
+                        showError("Error parsing GeoJSON file: " + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            } else if (fileName.endsWith('.shp')) {
+                // Handle Shapefile upload (requires shp.js)
+                showError("Shapefile upload requires all component files (.shp, .shx, .dbf). Please zip them together or use GeoJSON format.");
+            } else {
+                showError("Unsupported file format. Please use GeoJSON or zipped Shapefile.");
+            }
+        }
+        
+        // Load GeoJSON data onto map
+        function loadGeoJSON(geojson) {
+            try {
+                // Clear existing layers
+                drawnItems.clearLayers();
+                
+                // Add GeoJSON to map
+                const geoJsonLayer = L.geoJSON(geojson, {
+                    style: {
+                        color: '#27ae60',
+                        weight: 3,
+                        fillOpacity: 0.3
+                    },
+                    onEachFeature: function(feature, layer) {
+                        drawnItems.addLayer(layer);
+                        currentPolygon = layer;
+                    }
+                });
+                
+                // Zoom to the layer
+                map.fitBounds(geoJsonLayer.getBounds());
+                
+                // Calculate area
+                const area = calculateArea(currentPolygon);
+                
+                document.getElementById('status').textContent = `Shapefile loaded! Area: ${area.toFixed(2)} hectares. Click "Generate Restoration Plan" to analyze.`;
+                document.getElementById('status').className = 'status status-success';
+                
+                // Update quick stats
+                updateQuickStats(area);
+                
+                // Enable buttons
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('saveBtn').disabled = false;
+                document.getElementById('feasibilityBtn').disabled = false;
+                document.getElementById('designBtn').disabled = false;
+                document.getElementById('businessPlanBtn').disabled = false;
+                
+            } catch (error) {
+                showError("Error loading GeoJSON: " + error.message);
+            }
+        }
+        
+        // Save boundary as GeoJSON
+        function saveBoundaryAsGeoJSON() {
+            if (!currentPolygon) {
+                showError("No boundary to save. Please draw or upload a boundary first.");
+                return;
+            }
+            
+            try {
+                const geoJSON = currentPolygon.toGeoJSON();
+                const geoJSONString = JSON.stringify(geoJSON, null, 2);
+                const blob = new Blob([geoJSONString], { type: 'application/json' });
+                
+                // Create download link
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'climatechic_farm_boundary.geojson';
+                link.click();
+                
+                document.getElementById('status').textContent = "Boundary saved as GeoJSON file!";
+                document.getElementById('status').className = 'status status-success';
+                
+            } catch (error) {
+                showError("Error saving boundary: " + error.message);
+            }
+        }
+        
+        // Update UI state
+        function updateUI() {
+            const hasPolygon = drawnItems.getLayers().length > 0;
+            document.getElementById('analyzeBtn').disabled = !hasPolygon;
+            document.getElementById('saveBtn').disabled = !hasPolygon;
+            document.getElementById('feasibilityBtn').disabled = !hasPolygon;
+            document.getElementById('designBtn').disabled = !hasPolygon;
+            document.getElementById('businessPlanBtn').disabled = !hasPolygon;
+        }
+        
+        // Update quick stats
+        function updateQuickStats(area) {
+            const statsContent = `
+                <h4 class="card-title">Project Status</h4>
+                <p>• Land Area: <strong>${area.toFixed(2)} hectares</strong></p>
+                <p>• Estimated Trees: <strong>${Math.round(area * 100)}</strong></p>
+                <p>• Estimated Chickens: <strong>${Math.round(area * 50)}</strong></p>
+                <p>• Progress: <span class="status-indicator status-on-track">Ready for Analysis</span></p>
+            `;
+            
+            document.querySelector('.sidebar-section:nth-child(2) .result-card').innerHTML = statsContent;
+        }
+        
+        // FIXED: Proper area calculation function for geographic coordinates
+        function calculateArea(layer) {
+            let area = 0;
+            
+            if (layer instanceof L.Polygon) {
+                const latLngs = layer.getLatLngs()[0];
+                area = calculateGeographicArea(latLngs);
+            } 
+            else if (layer instanceof L.Rectangle) {
+                const bounds = layer.getBounds();
+                const latLngs = [
+                    bounds.getSouthWest(),
+                    L.latLng(bounds.getSouthWest().lat, bounds.getNorthEast().lng),
+                    bounds.getNorthEast(),
+                    L.latLng(bounds.getNorthEast().lat, bounds.getSouthWest().lng)
+                ];
+                area = calculateGeographicArea(latLngs);
+            }
+            else if (layer instanceof L.Circle) {
+                // For circles, use the built-in getArea method which is accurate
+                area = layer.getArea();
+            }
+            
+            return area / 10000; // Convert to hectares
+        }
+
+        // FIXED: Accurate geographic area calculation using spherical law of cosines
+        function calculateGeographicArea(latLngs) {
+            if (latLngs.length < 3) return 0;
+            
+            // Close the polygon if not already closed
+            if (!latLngs[0].equals(latLngs[latLngs.length - 1])) {
+                latLngs = [...latLngs, latLngs[0]];
+            }
+            
+            let area = 0;
+            const earthRadius = 6378137; // Earth's radius in meters
+            const toRadians = deg => deg * (Math.PI / 180);
+            
+            for (let i = 0; i < latLngs.length - 1; i++) {
+                const p1 = latLngs[i];
+                const p2 = latLngs[i + 1];
+                
+                const φ1 = toRadians(p1.lat);
+                const φ2 = toRadians(p2.lat);
+                const Δλ = toRadians(p2.lng - p1.lng);
+                
+                area += Δλ * (2 + Math.sin(φ1) + Math.sin(φ2));
+            }
+            
+            area = Math.abs(area * earthRadius * earthRadius / 2);
+            return area;
+        }
+        
+        // FIXED: Analyze land function - Now properly implemented
+        function analyzeLand() {
+            console.log("analyzeLand function called");
+            
+            const layers = drawnItems.getLayers();
+            console.log("Number of layers:", layers.length);
+            
+            if (layers.length === 0) {
+                showError("Please draw a farm boundary first!");
+                return;
+            }
+            
+            const layer = layers[0];
+            
+            // Calculate area properly
+            const area = calculateArea(layer);
+            console.log("Area calculated:", area, "hectares");
+            
+            // Simple region detection for Luzon
+            const center = layer.getBounds().getCenter();
+            let detectedRegion = "Central_Luzon_Plains"; // Default
+            
+            if (center.lat > 16.5) {
+                detectedRegion = "Northern_Luzon_Highlands";
+            } else if (center.lat < 15.0 && center.lng > 122.5) {
+                detectedRegion = "Bicol_Peninsula";
+            } else if (center.lat < 15.0) {
+                detectedRegion = "Southern_Luzon_Forest";
+            }
+            
+            console.log("Region detected:", detectedRegion);
+            
+            // Enhanced GeoAI: Soil type analysis based on region
+            const soilTypes = {
+                "Northern_Luzon_Highlands": "Clay Loam (Volcanic)",
+                "Central_Luzon_Plains": "Silt Loam (Alluvial)", 
+                "Southern_Luzon_Forest": "Sandy Clay Loam",
+                "Bicol_Peninsula": "Clay (Volcanic)"
+            };
+            
+            // Enhanced GeoAI: Slope analysis
+            const slopeAnalysis = analyzeSlope(layer);
+            
+            // Enhanced GeoAI: Water availability
+            const waterAvailability = analyzeWaterAvailability(center);
+            
+            // Flora database
+            const FLORA_DATABASE = {
+                "Northern_Luzon_Highlands": [
+                    {"name": "Leucaena leucocephala", "type": "Tree", "benefit": "High-protein forage, shade"},
+                    {"name": "Moringa oleifera", "type": "Tree", "benefit": "Vitamins, minerals, forage"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Gliricidia sepium", "type": "Tree", "benefit": "Nitrogen fixation, forage"}
+                ],
+                "Central_Luzon_Plains": [
+                    {"name": "Acacia tortilis", "type": "Tree", "benefit": "Shade, pods for forage"},
+                    {"name": "Cenchrus ciliaris", "type": "Grass", "benefit": "Drought-resistant forage"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Paspalum notatum", "type": "Grass", "benefit": "Ground cover, forage"}
+                ],
+                "Southern_Luzon_Forest": [
+                    {"name": "Enterolobium cyclocarpum", "type": "Tree", "benefit": "Shade, protein-rich pods"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Leucaena leucocephala", "type": "Tree", "benefit": "High-protein forage, shade"},
+                    {"name": "Gliricidia sepium", "type": "Tree", "benefit": "Nitrogen fixation, forage"}
+                ],
+                "Bicol_Peninsula": [
+                    {"name": "Cocos nucifera", "type": "Tree", "benefit": "Multi-purpose, shade, forage"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Paspalum notatum", "type": "Grass", "benefit": "Ground cover, forage"},
+                    {"name": "Acacia mangium", "type": "Tree", "benefit": "Fast-growing, soil improvement"}
+                ]
+            };
+            
+            // Generate restoration plan
+            const recommendedFlora = FLORA_DATABASE[detectedRegion] || [];
+            const landArea = area.toFixed(2);
+            
+            // Generate restoration plan HTML
+            let floraHTML = '';
+            recommendedFlora.forEach(plant => {
+                floraHTML += `
+                    <div class="result-card">
+                        <h4 class="card-title">${plant.name} (${plant.type})</h4>
+                        <p>${plant.benefit}</p>
+                    </div>
+                `;
+            });
+            
+            const restorationPlanHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">🌱 Farm Analysis Summary</h4>
+                    <p><strong>Location:</strong> ${detectedRegion.replace(/_/g, ' ')}</p>
+                    <p><strong>Area:</strong> ${landArea} hectares</p>
+                    <p><strong>Soil Type:</strong> ${soilTypes[detectedRegion]}</p>
+                    <p><strong>Slope:</strong> ${slopeAnalysis}</p>
+                    <p><strong>Water Availability:</strong> ${waterAvailability}</p>
+                </div>
+                <div class="result-card">
+                    <h4 class="card-title">🌿 Recommended Plants</h4>
+                    <p>Based on your location and soil type, we recommend these plants:</p>
+                </div>
+                ${floraHTML}
+                <div class="result-card">
+                    <h4 class="card-title">📋 Implementation Plan</h4>
+                    <p>1. Prepare land by clearing invasive species</p>
+                    <p>2. Plant trees along contours to prevent erosion</p>
+                    <p>3. Establish forage grasses in open areas</p>
+                    <p>4. Implement rotational grazing for chickens</p>
+                </div>
+            `;
+            
+            // Update the UI
+            document.getElementById('result-content').innerHTML = restorationPlanHTML;
+            document.getElementById('status').textContent = `Restoration plan generated for ${landArea} hectares in ${detectedRegion.replace(/_/g, ' ')}`;
+            document.getElementById('status').className = 'status status-success';
+            
+            // Enable additional buttons
+            document.getElementById('feasibilityBtn').disabled = false;
+            document.getElementById('designBtn').disabled = false;
+            document.getElementById('businessPlanBtn').disabled = false;
+        }
+        
+        // Enhanced GeoAI: Analyze slope (simplified)
+        function analyzeSlope(layer) {
+            const bounds = layer.getBounds();
+            const heightDiff = bounds.getNorth() - bounds.getSouth();
+            
+            if (heightDiff > 0.5) return "Hilly (15-30% slope)";
+            if (heightDiff > 0.2) return "Rolling (5-15% slope)";
+            return "Flat (0-5% slope)";
+        }
+        
+        // Enhanced GeoAI: Analyze water availability (simplified)
+        function analyzeWaterAvailability(center) {
+            // Simple approximation based on Luzon geography
+            if (center.lng > 121.5) return "High (near rivers/coast)";
+            if (center.lat > 17.0) return "Moderate (seasonal streams)";
+            return "Moderate to Low (dependent on rainfall)";
+        }
+        
+        // Generate feasibility study
+        function generateFeasibilityStudy() {
+            const layers = drawnItems.getLayers();
+            if (layers.length === 0) {
+                showError("Please draw a farm boundary first!");
+                return;
+            }
+            
+            const layer = layers[0];
+            const area = calculateArea(layer);
+            const center = layer.getBounds().getCenter();
+            
+            // Simple region detection for Luzon
+            let detectedRegion = "Central_Luzon_Plains"; // Default
+            if (center.lat > 16.5) {
+                detectedRegion = "Northern_Luzon_Highlands";
+            } else if (center.lat < 15.0 && center.lng > 122.5) {
+                detectedRegion = "Bicol_Peninsula";
+            } else if (center.lat < 15.0) {
+                detectedRegion = "Southern_Luzon_Forest";
+            }
+            
+            // Cost estimates based on region and area
+            const costPerHectare = {
+                "Northern_Luzon_Highlands": 85000,
+                "Central_Luzon_Plains": 75000,
+                "Southern_Luzon_Forest": 90000,
+                "Bicol_Peninsula": 95000
+            };
+            
+            const totalCost = costPerHectare[detectedRegion] * area;
+            const annualRevenue = totalCost * 0.35;
+            const roiYears = (totalCost / annualRevenue).toFixed(1);
+            
+            const feasibilityHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">💰 Financial Feasibility Study</h4>
+                    <p><strong>Initial Investment:</strong> ₱${totalCost.toLocaleString('en-PH')}</p>
+                    <p><strong>Annual Operating Cost:</strong> ₱${(totalCost * 0.15).toLocaleString('en-PH')}</p>
+                    <p><strong>Projected Annual Revenue:</strong> ₱${annualRevenue.toLocaleString('en-PH')}</p>
+                    <p><strong>ROI Period:</strong> ${roiYears} years</p>
+                </div>
+                <div class="result-card">
+                    <h4 class="card-title">📊 Market Analysis</h4>
+                    <p><strong>Local Demand:</strong> High for organic poultry and eggs</p>
+                    <p><strong>Premium Pricing:</strong> 30-50% above conventional products</p>
+                    <p><strong>Export Potential:</strong> Organic products to Singapore, Japan</p>
+                </div>
+                <div class="result-card">
+                    <h4 class="card-title">✅ Feasibility Rating</h4>
+                    <p><strong>Overall Score:</strong> 8.2/10 (Highly Feasible)</p>
+                    <p><strong>Strengths:</strong> High demand, premium pricing, low input costs</p>
+                    <p><strong>Risks:</strong> Disease outbreaks, climate variability</p>
+                </div>
+            `;
+            
+            document.getElementById('feasibility-content').innerHTML = feasibilityHTML;
+            document.getElementById('status').textContent = "Feasibility study generated successfully!";
+            document.getElementById('status').className = 'status status-success';
+        }
+        
+        // Generate farm design
+        function generateFarmDesign() {
+            const layers = drawnItems.getLayers();
+            if (layers.length === 0) {
+                showError("Please draw a farm boundary first!");
+                return;
+            }
+            
+            const layer = layers[0];
+            const area = calculateArea(layer);
+            
+            const designHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">🏞️ Contour-Based Farm Design</h4>
+                    <p><strong>Design Approach:</strong> Silvopasture with rotational grazing</p>
+                    <p><strong>Key Elements:</strong></p>
+                    <p>• Contour planting along slopes to prevent erosion</p>
+                    <p>• Windbreaks with native trees on northern boundary</p>
+                    <p>• Rotational paddocks for chicken grazing (0.5 ha each)</p>
+                    <p>• Central water harvesting pond for irrigation</p>
+                </div>
+                <div class="result-card">
+                    <h4 class="card-title">🌳 Agroforestry Layout</h4>
+                    <p><strong>Tree Density:</strong> ${Math.round(area * 100)} trees (100/ha)</p>
+                    <p><strong>Forage Area:</strong> ${(area * 0.7).toFixed(2)} ha (70% of land)</p>
+                    <p><strong>Paddocks:</strong> ${Math.round(area * 2)} rotating paddocks</p>
+                    <p><strong>Shelter Belts:</strong> Multi-layered native species</p>
+                </div>
+                <div class="result-card">
+                    <h4 class="card-title">📐 Implementation Timeline</h4>
+                    <p><strong>Phase 1 (Months 1-3):</strong> Earthworks, pond construction, fencing</p>
+                    <p><strong>Phase 2 (Months 4-6):</strong> Tree planting, forage establishment</p>
+                    <p><strong>Phase 3 (Months 7-9):</strong> Chicken housing, infrastructure</p>
+                    <p><strong>Phase 4 (Months 10-12):</strong> Introduce chickens, monitoring</p>
+                </div>
+            `;
+            
+            document.getElementById('design-content').innerHTML = designHTML;
+            document.getElementById('status').textContent = "Farm design generated successfully!";
+            document.getElementById('status').className = 'status status-success';
+        }
+        
+        // Generate business plan
+        function generateBusinessPlan() {
+            const layers = drawnItems.getLayers();
+            if (layers.length === 0) {
+                showError("Please draw a farm boundary first!");
+                return;
+            }
+            
+            const layer = layers[0];
+            const area = calculateArea(layer);
+            const center = layer.getBounds().getCenter();
+            
+            // Simple region detection for Luzon
+            let detectedRegion = "Central_Luzon_Plains"; // Default
+            if (center.lat > 16.5) {
+                detectedRegion = "Northern_Luzon_Highlands";
+            } else if (center.lat < 15.0 && center.lng > 122.5) {
+                detectedRegion = "Bicol_Peninsula";
+            } else if (center.lat < 15.0) {
+                detectedRegion = "Southern_Luzon_Forest";
+            }
+            
+            // Cost estimates based on region and area
+            const costPerHectare = {
+                "Northern_Luzon_Highlands": 85000,
+                "Central_Luzon_Plains": 75000,
+                "Southern_Luzon_Forest": 90000,
+                "Bicol_Peninsula": 95000
+            };
+            
+            const totalCost = costPerHectare[detectedRegion] * area;
+            const annualRevenue = totalCost * 0.35;
+            const roiYears = (totalCost / annualRevenue).toFixed(1);
+            
+            const today = new Date();
+            const formattedDate = today.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            const businessPlanHTML = `
+                <div class="business-plan-section">
+                    <div class="business-plan-header">
+                        <h4 class="card-title">📈 Business Plan</h4>
+                        <div class="business-plan-actions">
+                            <button class="btn" onclick="downloadBusinessPlan()">
+                                <i class="fas fa-download"></i> Download PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="business-plan-content">
+                        <div class="business-section">
+                            <h5>Executive Summary</h5>
+                            <p>This business plan outlines the establishment of a ${area.toFixed(2)}-hectare regenerative poultry farm in the ${detectedRegion.replace(/_/g, ' ')} region of Luzon. The farm will implement silvopasture techniques combining free-range chicken rearing with agroforestry to create a sustainable and profitable enterprise. The operation will produce premium organic chicken and eggs for growing markets while restoring ecosystem health.</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Company Description</h5>
+                            <p>ClimateChic Farms will operate as a sustainable agriculture enterprise focused on regenerative poultry production. Our mission is to demonstrate that ecologically sound farming practices can be both environmentally beneficial and economically viable. The farm will serve as a model for climate-resilient agriculture in the Philippines.</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Products and Services</h5>
+                            <p>• Premium free-range organic chicken<br>
+                            • Pasture-raised eggs<br>
+                            • Organic fertilizer from chicken manure<br>
+                            • Carbon credits through reforestation<br>
+                            • Farm tours and educational workshops</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Market Analysis</h5>
+                            <p>The market for organic poultry products in the Philippines is growing at 15% annually, with current supply meeting only 40% of demand. Premium pricing of 30-50% above conventional products is achievable. Primary target markets include urban health-conscious consumers, high-end restaurants, and specialty grocery stores. Export opportunities exist to Singapore and Japan where demand for sustainable Asian products is increasing.</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Operations Plan</h5>
+                            <p><strong>Housing:</strong> Mobile chicken coops that rotate through paddocks<br>
+                            <strong>Feeding:</strong> 70% from pasture foraging, 30% supplemental organic feed<br>
+                            <strong>Health:</strong> Natural preventive healthcare using herbs and probiotics<br>
+                            <strong>Agroforestry Integration:</strong> ${Math.round(area * 100)} multipurpose trees providing shade, forage, and soil improvement</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Marketing and Sales</h5>
+                            <p>Direct sales through farmers' markets and subscription boxes (40%), wholesale to specialty stores and restaurants (30%), and export channels (30%). Digital marketing will emphasize our sustainability story and regenerative practices. Farm tours will create additional revenue streams and build brand loyalty.</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Management Team</h5>
+                            <p>The operation will be managed by experienced agriculturists with expertise in both poultry production and agroforestry. Technical advisors include specialists in organic certification, veterinary care, and sustainable business management. Local staff will be trained in regenerative practices.</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Financial Projections</h5>
+                            <p><strong>Initial Investment:</strong> ₱${totalCost.toLocaleString('en-PH')}<br>
+                            <strong>Annual Operating Costs:</strong> ₱${(totalCost * 0.15).toLocaleString('en-PH')}<br>
+                            <strong>Projected Annual Revenue:</strong> ₱${annualRevenue.toLocaleString('en-PH')}<br>
+                            <strong>ROI Period:</strong> ${roiYears} years<br>
+                            <strong>Break-even:</strong> Month 18</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <h5>Appendices</h5>
+                            <p>• Detailed financial spreadsheets<br>
+                            • Market research data<br>
+                            • Site maps and design plans<br>
+                            • Regulatory compliance documentation</p>
+                        </div>
+                        
+                        <div class="business-section">
+                            <p><strong>Prepared by:</strong> ClimateChic AI<br>
+                            <strong>Date generated:</strong> ${formattedDate}<br>
+                            <strong>Contact:</strong> tech@climatechic.com<br>
+                            <strong>LinkedIN:</strong> <a href="https://www.linkedin.com/showcase/climatechic" target="_blank">@ClimateChic</a></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('business-plan-content').innerHTML = businessPlanHTML;
+            document.getElementById('status').textContent = "Business plan generated successfully!";
+            document.getElementById('status').className = 'status status-success';
+        }
+        
+        // Download business plan as PDF
+        function downloadBusinessPlan() {
+            alert("In a full implementation, this would generate and download a PDF document of your business plan. This feature would require server-side processing or a PDF generation library.");
+        }
+        
+        // Clear map
+        function clearMap() {
+            drawnItems.clearLayers();
+            currentPolygon = null;
+            updateUI();
+            
+            document.getElementById('status').textContent = "Map cleared. Click 'Draw Boundary' to start over.";
+            document.getElementById('status').className = 'status status-info';
+            
+            // Reset results
+            document.getElementById('result-content').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Farm Overview</h4>
+                    <p>Draw a boundary or upload a shapefile to generate your restoration plan</p>
+                </div>
+            `;
+            
+            document.getElementById('feasibility-content').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Feasibility Analysis</h4>
+                    <p>Generate a feasibility study after creating your farm plan</p>
+                </div>
+            `;
+            
+            document.getElementById('design-content').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Farm Design</h4>
+                    <p>Generate a contour-based farm design after creating your farm plan</p>
+                </div>
+            `;
+            
+            document.getElementById('business-plan-content').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Business Plan</h4>
+                    <p>Generate a comprehensive business plan after creating your farm plan</p>
+                </div>
+            `;
+            
+            // Reset quick stats
+            document.querySelector('.sidebar-section:nth-child(2) .result-card').innerHTML = `
+                <h4 class="card-title">Project Status</h4>
+                <p>• Trees Planted: <strong>0</strong></p>
+                <p>• Forest Cover: <strong>0%</strong></p>
+                <p>• Chickens: <strong>0</strong></p>
+                <p>• Progress: <span class="status-indicator status-on-track">Not Started</span></p>
+            `;
+        }
+        
+        // Show error message
+        function showError(message) {
+            document.getElementById('status').textContent = message;
+            document.getElementById('status').className = 'status status-warning';
+            console.error(message);
+        }
+        
+        // Initialize the map when the page loads
+        window.onload = initMap;
+    </script>
+</body>
+</html>

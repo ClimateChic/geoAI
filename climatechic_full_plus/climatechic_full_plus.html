@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimateChic - Agro-Ecological Planning</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { height: 70vh; width: 100%; }
+        #controls { padding: 15px; background: #2c3e50; color: white; }
+        #results { padding: 20px; max-height: 30vh; overflow-y: auto; background: #ecf0f1; }
+        .btn { background: #27ae60; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; font-size: 14px; }
+        .btn:hover { background: #219a52; }
+        .btn:disabled { background: #95a5a6; cursor: not-allowed; }
+        .result-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .flora-item { margin: 8px 0; padding: 8px; background: #f8f9fa; border-left: 4px solid #27ae60; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .status-info { background: #d6eaf8; border-left: 4px solid #3498db; }
+        .status-success { background: #d4efdf; border-left: 4px solid #27ae60; }
+        .status-warning { background: #fdebd0; border-left: 4px solid #f39c12; }
+        .verification-status { 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            margin: 10px 0;
+            text-align: center;
+        }
+        .verification-pass { background: #d4efdf; color: #145a32; border: 2px solid #27ae60; }
+        .verification-fail { background: #f9ebea; color: #78281f; border: 2px solid #c0392b; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h2>🌱 ClimateChic Restoration Planner - Luzon, Philippines</h2>
+        <button class="btn" id="drawBtn">Draw Farm Boundary</button>
+        <button class="btn" id="analyzeBtn" disabled>Generate Restoration Plan</button>
+        <button class="btn" id="clearBtn">Clear Map</button>
+        <div id="status" class="status status-info">Click "Draw Farm Boundary" to start drawing</div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="results">
+        <h3>Restoration Plan Results</h3>
+        <div id="result-content">Draw a boundary and click 'Generate Restoration Plan' to see results</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // Initialize variables
+        let map, drawnItems, drawControl, currentPolygon = null;
+        
+        // Initialize the map - ZOOMED TO LUZON, PHILIPPINES
+        function initMap() {
+            // Luzon, Philippines coordinates [latitude, longitude]
+            const luzonCenter = [16.0, 121.0];
+            const luzonBounds = [
+                [12.0, 119.0], // Southwest
+                [19.0, 124.0]  // Northeast
+            ];
+            
+            map = L.map('map').setView(luzonCenter, 7); // Zoom level 7 for Luzon overview
+            
+            // Base layers
+            const baseLayers = {
+                "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Esri World Imagery'
+                }),
+                "Terrain": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Esri Terrain'
+                }),
+                "Dark Mode": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: 'CartoDB'
+                }),
+                "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: 'OpenStreetMap'
+                })
+            };
+            
+            baseLayers.Satellite.addTo(map);
+            L.control.layers(baseLayers).addTo(map);
+            
+            // Initialize drawn items layer
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            
+            // Setup event listeners FIRST
+            setupEventListeners();
+            
+            // Initialize draw control AFTER event listeners
+            drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    polygon: {
+                        allowIntersection: false,
+                        showArea: true,
+                        metric: true,
+                        shapeOptions: {
+                            color: '#27ae60',
+                            weight: 3,
+                            fillOpacity: 0.3
+                        }
+                    },
+                    rectangle: {
+                        shapeOptions: {
+                            color: '#27ae60',
+                            weight: 3,
+                            fillOpacity: 0.3
+                        }
+                    },
+                    circle: false,
+                    marker: false,
+                    polyline: false
+                }
+            });
+            
+            map.addControl(drawControl);
+            
+            // Add biogeographic regions for Luzon
+            addBiogeographicRegions();
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            console.log("Setting up event listeners...");
+            
+            // Map drawing events
+            map.on(L.Draw.Event.CREATED, function (e) {
+                console.log("Drawing created event fired");
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                currentPolygon = layer;
+                updateUI();
+                
+                // Calculate area using proper method
+                const area = calculateArea(layer);
+                
+                layer.bindPopup(`Farm Boundary: ${area.toFixed(2)} hectares`).openPopup();
+                
+                document.getElementById('status').textContent = `Boundary drawn! Area: ${area.toFixed(2)} hectares. Click "Generate Restoration Plan" to analyze.`;
+                document.getElementById('status').className = 'status status-success';
+            });
+
+            // Remove any existing event listeners first
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const newAnalyzeBtn = analyzeBtn.cloneNode(true);
+            analyzeBtn.parentNode.replaceChild(newAnalyzeBtn, analyzeBtn);
+            
+            const drawBtn = document.getElementById('drawBtn');
+            const newDrawBtn = drawBtn.cloneNode(true);
+            drawBtn.parentNode.replaceChild(newDrawBtn, drawBtn);
+            
+            const clearBtn = document.getElementById('clearBtn');
+            const newClearBtn = clearBtn.cloneNode(true);
+            clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
+
+            // Add NEW event listeners
+            document.getElementById('drawBtn').addEventListener('click', function() {
+                console.log("Draw button clicked");
+                // Start polygon drawing
+                new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+                document.getElementById('status').textContent = 'Click on the map to start drawing your farm boundary. Double-click to finish.';
+                document.getElementById('status').className = 'status status-info';
+            });
+            
+            document.getElementById('analyzeBtn').addEventListener('click', function() {
+                console.log("Analyze button clicked");
+                analyzeLand();
+            });
+            
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                console.log("Clear button clicked");
+                clearMap();
+            });
+            
+            // Listen for layer changes to update UI
+            map.on('layeradd layerremove', updateUI);
+        }
+        
+        // PROPER area calculation function for geographic coordinates
+        function calculateArea(layer) {
+            let area = 0;
+            
+            if (layer instanceof L.Polygon) {
+                const latLngs = layer.getLatLngs()[0]; // Get the outer ring
+                area = calculateGeographicArea(latLngs);
+            } 
+            else if (layer instanceof L.Rectangle) {
+                const bounds = layer.getBounds();
+                const latLngs = [
+                    bounds.getSouthWest(),
+                    L.latLng(bounds.getSouthWest().lat, bounds.getNorthEast().lng),
+                    bounds.getNorthEast(),
+                    L.latLng(bounds.getNorthEast().lat, bounds.getSouthWest().lng)
+                ];
+                area = calculateGeographicArea(latLngs);
+            }
+            
+            return area / 10000; // Convert to hectares
+        }
+        
+        // Calculate area in square meters using the spherical law of cosines
+        function calculateGeographicArea(latLngs) {
+            if (latLngs.length < 3) return 0;
+            
+            let area = 0;
+            const n = latLngs.length;
+            
+            // Close the polygon if not already closed
+            if (!latLngs[0].equals(latLngs[n - 1])) {
+                latLngs = [...latLngs, latLngs[0]];
+            }
+            
+            for (let i = 0; i < latLngs.length - 1; i++) {
+                const p1 = latLngs[i];
+                const p2 = latLngs[i + 1];
+                
+                area += (p2.lng * Math.PI / 180 - p1.lng * Math.PI / 180) * 
+                        (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+            }
+            
+            area = area * 6378137 * 6378137 / 2; // Earth's radius squared
+            return Math.abs(area);
+        }
+        
+        // Add biogeographic regions for Luzon, Philippines
+        function addBiogeographicRegions() {
+            const regions = [
+                {
+                    name: "Northern Luzon Highlands",
+                    bounds: [[16.5, 120.5], [18.5, 121.5]],
+                    color: '#27ae60'
+                },
+                {
+                    name: "Central Luzon Plains", 
+                    bounds: [[15.0, 120.5], [16.5, 121.5]],
+                    color: '#f39c12'
+                },
+                {
+                    name: "Southern Luzon Forest",
+                    bounds: [[13.5, 121.0], [15.0, 122.0]],
+                    color: '#3498db'
+                },
+                {
+                    name: "Bicol Peninsula",
+                    bounds: [[13.0, 123.0], [14.0, 124.0]],
+                    color: '#9b59b6'
+                }
+            ];
+            
+            regions.forEach(region => {
+                const rectangle = L.rectangle(region.bounds, {
+                    color: region.color,
+                    weight: 2,
+                    fillOpacity: 0.1
+                }).addTo(map);
+                
+                rectangle.bindPopup(`<strong>${region.name}</strong><br>Biogeographic Region of Luzon`);
+            });
+        }
+        
+        // Update UI state
+        function updateUI() {
+            const hasPolygon = drawnItems.getLayers().length > 0;
+            document.getElementById('analyzeBtn').disabled = !hasPolygon;
+            console.log("UI updated. Analyze button disabled:", !hasPolygon);
+        }
+        
+        // Analyze land function with proper area calculation
+        function analyzeLand() {
+            console.log("analyzeLand function called");
+            
+            const layers = drawnItems.getLayers();
+            console.log("Number of layers:", layers.length);
+            
+            if (layers.length === 0) {
+                showError("Please draw a farm boundary first!");
+                return;
+            }
+            
+            const layer = layers[0];
+            
+            // Calculate area properly
+            const area = calculateArea(layer);
+            console.log("Area calculated:", area, "hectares");
+            
+            // Simple region detection for Luzon
+            const center = layer.getBounds().getCenter();
+            let detectedRegion = "Central_Luzon_Plains"; // Default
+            
+            if (center.lat > 16.5) {
+                detectedRegion = "Northern_Luzon_Highlands";
+            } else if (center.lat < 15.0 && center.lng > 122.5) {
+                detectedRegion = "Bicol_Peninsula";
+            } else if (center.lat < 15.0) {
+                detectedRegion = "Southern_Luzon_Forest";
+            }
+            
+            console.log("Region detected:", detectedRegion);
+            
+            // Flora database with MULBERRY ADDED
+            const FLORA_DATABASE = {
+                "Northern_Luzon_Highlands": [
+                    {"name": "Leucaena leucocephala", "type": "Tree", "benefit": "High-protein forage, shade"},
+                    {"name": "Moringa oleifera", "type": "Tree", "benefit": "Vitamins, minerals, forage"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Gliricidia sepium", "type": "Tree", "benefit": "Nitrogen fixation, forage"}
+                ],
+                "Central_Luzon_Plains": [
+                    {"name": "Acacia tortilis", "type": "Tree", "benefit": "Shade, pods for forage"},
+                    {"name": "Cenchrus ciliaris", "type": "Grass", "benefit": "Drought-resistant forage"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Paspalum notatum", "type": "Grass", "benefit": "Ground cover, forage"}
+                ],
+                "Southern_Luzon_Forest": [
+                    {"name": "Enterolobium cyclocarpum", "type": "Tree", "benefit": "Shade, protein-rich pods"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Leucaena leucocephala", "type": "Tree", "benefit": "High-protein forage, shade"},
+                    {"name": "Gliricidia sepium", "type": "Tree", "benefit": "Nitrogen fixation, forage"}
+                ],
+                "Bicol_Peninsula": [
+                    {"name": "Cocos nucifera", "type": "Tree", "benefit": "Multi-purpose, shade, forage"},
+                    {"name": "Morus alba (Mulberry)", "type": "Tree", "benefit": "Silkworm feed, chicken forage"},
+                    {"name": "Paspalum notatum", "type": "Grass", "benefit": "Ground cover, forage"},
+                    {"name": "Acacia mangium", "type": "Tree", "benefit": "Fast-growing, soil improvement"}
+                ]
+            };
+            
+            // Generate restoration plan
+            const recommendedFlora = FLORA_DATABASE[detectedRegion] || [];
+            const landArea = area.toFixed(2);
+            const estimatedTrees = Math.round(area * 100);
+            const estimatedChickens = Math.round(area * 50);
+            const bsfProduction = Math.round(area * 2);
+            const silkwormProduction = Math.round(area * 5); // SILKWORM ADDED
+            
+            // Pre-feasibility verification
+            const isFeasible = area >= 1.0; // At least 1 hectare is feasible
+            const verificationStatus = isFeasible ? "PASS" : "FAIL";
+            const verificationMessage = isFeasible ? 
+                "Project meets minimum area requirements for feasibility" :
+                "Minimum 1 hectare required for feasible operation";
+            
+            console.log("Plan generated:", {
+                landArea,
+                detectedRegion,
+                floraCount: recommendedFlora.length,
+                verificationStatus
+            });
+            
+            // Display results
+            displayResults({
+                landArea,
+                detectedRegion,
+                recommendedFlora,
+                estimatedTrees,
+                estimatedChickens,
+                bsfProduction,
+                silkwormProduction, // SILKWORM ADDED
+                verificationStatus,
+                verificationMessage
+            });
+            
+            // Add results to map as popup
+            addMapPopup(layer, {
+                landArea,
+                detectedRegion,
+                floraCount: recommendedFlora.length,
+                verificationStatus
+            });
+            
+            document.getElementById('status').textContent = `Analysis complete! ${landArea} hectares in ${detectedRegion.replace(/_/g, ' ')} region.`;
+            document.getElementById('status').className = 'status status-success';
+        }
+        
+        // Display results in the results panel
+        function displayResults(data) {
+            console.log("Displaying results:", data);
+            
+            let resultHTML = `
+                <div class="result-card">
+                    <h4>🌱 Restoration Plan for ${data.landArea} hectares</h4>
+                    <p><strong>Region:</strong> ${data.detectedRegion.replace(/_/g, ' ')}</p>
+                    
+                    <div class="verification-status ${data.verificationStatus === 'PASS' ? 'verification-pass' : 'verification-fail'}">
+                        <strong>Pre-feasibility Verification:</strong> ${data.verificationStatus}
+                        <br><small>${data.verificationMessage}</small>
+                    </div>
+                    
+                    <h5>Recommended Flora Species:</h5>
+            `;
+            
+            data.recommendedFlora.forEach(flora => {
+                resultHTML += `
+                    <div class="flora-item">
+                        <strong>${flora.name}</strong> (${flora.type})<br>
+                        <em>${flora.benefit}</em>
+                    </div>
+                `;
+            });
+            
+            resultHTML += `
+                    <h5>Production Projections:</h5>
+                    <ul>
+                        <li><strong>Trees (Year 5):</strong> ${data.estimatedTrees} trees</li>
+                        <li><strong>Free-range Chickens (Year 2):</strong> ${data.estimatedChickens} chickens</li>
+                        <li><strong>BSF Production:</strong> ${data.bsfProduction} kg/week</li>
+                        <li><strong>Silkworm Production:</strong> ${data.silkwormProduction} kg/month</li>
+                    </ul>
+                    
+                    <h5>Operational Guidelines:</h5>
+                    <ul>
+                        <li><strong>Months 1-3:</strong> Soil preparation and pioneer species planting</li>
+                        <li><strong>Months 4-6:</strong> Introduce nitrogen-fixing plants and cover crops</li>
+                        <li><strong>Months 7-12:</strong> Establish poultry infrastructure and initial flock</li>
+                        <li><strong>Free-range Chicken Raising (Broiler):</strong> 8-week cycles with mobile shelters</li>
+                        <li><strong>Free-range Chicken Raising (Layer):</strong> Egg production with rotational grazing</li>
+                        <li><strong>Year 2:</strong> Scale integrated systems and value-added production</li>
+                        <li><strong>Silkworm Production:</strong> Mulberry cultivation and sericulture integration</li>
+                    </ul>
+                </div>
+            `;
+            
+            document.getElementById('result-content').innerHTML = resultHTML;
+        }
+        
+        // Add popup to the map
+        function addMapPopup(layer, data) {
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <h4 style="color: #27ae60; margin: 0 0 10px 0;">ClimateChic Restoration Plan</h4>
+                    <p><strong>Area:</strong> ${data.landArea} hectares</p>
+                    <p><strong>Region:</strong> ${data.detectedRegion.replace(/_/g, ' ')}</p>
+                    <p><strong>Pre-feasibility:</strong> ${data.verificationStatus}</p>
+                    <p><strong>Recommended Species:</strong> ${data.floraCount}</p>
+                    <p><strong>Status:</strong> Analysis Complete ✅</p>
+                </div>
+            `;
+            
+            layer.bindPopup(popupContent, {maxWidth: 300}).openPopup();
+        }
+        
+        // Clear map function
+        function clearMap() {
+            drawnItems.clearLayers();
+            currentPolygon = null;
+            updateUI();
+            document.getElementById('result-content').innerHTML = "Draw a boundary and click 'Generate Restoration Plan' to see results";
+            document.getElementById('status').textContent = "Map cleared. Click 'Draw Farm Boundary' to start drawing.";
+            document.getElementById('status').className = 'status status-info';
+        }
+        
+        // Show error message
+        function showError(message) {
+            document.getElementById('status').textContent = message;
+            document.getElementById('status').className = 'status status-warning';
+        }
+        
+        // Initialize the map when page loads
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+<!-- ClimateChic+ upgrade panels injected successfully -->
+</body>
+</html>

@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimateChic - Enhanced with Local Geodata</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #27ae60;
+            --primary-dark: #219a52;
+            --secondary: #3498db;
+            --accent: #9b59b6;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --white: #ffffff;
+            --gray: #95a5a6;
+            --border-radius: 12px;
+            --shadow: 0 8px 32px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-container {
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            height: 80px;
+            width: auto;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: white;
+            padding: 5px;
+        }
+
+        .header-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            min-height: 600px;
+        }
+
+        .map-section {
+            position: relative;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 3px solid var(--white);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #2980b9 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent) 0%, #8e44ad 100%);
+        }
+
+        .btn-business {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+        }
+
+        .btn-geodata {
+            background: linear-gradient(135deg, #16a085 0%, #1abc9c 100%);
+        }
+
+        .sidebar {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .status-info {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--secondary);
+            border-left: 4px solid var(--secondary);
+        }
+
+        .status-success {
+            background: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .status-warning {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning);
+            border-left: 4px solid var(--warning);
+        }
+
+        .result-card {
+            background: var(--white);
+            padding: 1.2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--dark);
+        }
+
+        .operations-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .operation-card {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .operation-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 0.2rem;
+        }
+
+        .status-on-track {
+            background: rgba(46, 204, 113, 0.2);
+            color: var(--success);
+        }
+
+        .status-delayed {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--danger);
+        }
+
+        .status-behind {
+            background: rgba(243, 156, 18, 0.2);
+            color: var(--warning);
+        }
+
+        .file-upload {
+            margin: 1rem 0;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: block;
+            padding: 0.8rem;
+            background: var(--light);
+            border: 2px dashed var(--gray);
+            border-radius: var(--border-radius);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .file-label:hover {
+            border-color: var(--primary);
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .business-plan-section {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f9f9f9;
+            border-radius: var(--border-radius);
+            border-left: 4px solid #e67e22;
+        }
+
+        .business-plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .business-plan-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .business-plan-content {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: white;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .business-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .business-section h5 {
+            color: #e67e22;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .business-section p {
+            margin-bottom: 0.5rem;
+        }
+
+        .geodata-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .geodata-content {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .geodata-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--dark);
+        }
+
+        .data-category {
+            margin-bottom: 1.5rem;
+        }
+
+        .data-category h4 {
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .data-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+        }
+
+        .data-item input[type="file"] {
+            display: none;
+        }
+
+        .data-item label {
+            flex: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .data-status {
+            margin-left: auto;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            background: #e0e0e0;
+        }
+
+        .data-status.uploaded {
+            background: var(--success);
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                max-height: none;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+
+        .leaflet-draw-toolbar {
+            margin-top: 12px;
+            margin-left: 12px;
+        }
+
+        .leaflet-draw-toolbar a {
+            background-color: var(--white);
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .leaflet-draw-toolbar a:hover {
+            background-color: #f4f4f4;
+        }
+
+        .strip-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+        }
+
+        .strip-info h4 {
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .strip-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .strip-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        .layer-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="https://images.unsplash.com/photo-1618477388957-7a27d6e1adf3?w=200&h=200&fit=crop&crop=center" alt="ClimateChic Logo" class="logo">
+            </div>
+            <h1 class="header-title">ClimateChic Farm Management</h1>
+            <p class="header-subtitle">Enhanced with Local Geodata Integration</p>
+        </div>
+
+        <div class="main-content">
+            <div class="map-section">
+                <div class="controls">
+                    <button class="btn" id="drawBtn">
+                        <i class="fas fa-draw-polygon"></i> Draw Boundary
+                    </button>
+                    <button class="btn btn-geodata" id="geodataBtn">
+                        <i class="fas fa-layer-group"></i> Upload Local Data
+                    </button>
+                    <button class="btn" id="analyzeBtn" disabled>
+                        <i class="fas fa-brain"></i> Generate Plan
+                    </button>
+                    <button class="btn btn-warning" id="clearBtn">
+                        <i class="fas fa-trash"></i> Clear Map
+                    </button>
+                    <button class="btn btn-accent" id="saveBtn" disabled>
+                        <i class="fas fa-download"></i> Save Boundary
+                    </button>
+                    <button class="btn btn-accent" id="feasibilityBtn" disabled>
+                        <i class="fas fa-calculator"></i> Generate Feasibility
+                    </button>
+                    <button class="btn btn-accent" id="designBtn" disabled>
+                        <i class="fas fa-project-diagram"></i> Generate Farm Design
+                    </button>
+                    <button class="btn btn-business" id="businessPlanBtn" disabled>
+                        <i class="fas fa-file-alt"></i> Generate Business Plan
+                    </button>
+                </div>
+                
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="layer-control">
+                        <label>
+                            <input type="radio" name="basemap" value="osm" checked> OpenStreetMap
+                        </label>
+                        <label>
+                            <input type="radio" name="basemap" value="satellite"> Satellite
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="status" class="status status-info">
+                    <i class="fas fa-info-circle"></i> Click "Upload Local Data" to enhance analysis with your geodata
+                </div>
+                
+                <div class="operations-grid">
+                    <div class="operation-card">
+                        <div class="operation-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h3>Operations</h3>
+                        <p>Gantt Chart & Calendar</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 65%;"></div>
+                        </div>
+                        <span class="status-indicator status-on-track">On Track</span>
+                    </div>
+                    
+                    <div class="operation-card">
+                        <div class="operation-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <h3>Accounting</h3>
+                        <p>Expenses & Revenue</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%;"></div>
+                        </div>
+                        <span class="status-indicator status-behind">Needs Update</span>
+                    </div>
+                </div>
+
+                <div class="strip-info">
+                    <h4>Data Integration Benefits</h4>
+                    <div class="strip-item">
+                        <div class="strip-color" style="background-color: #FF9999;"></div>
+                        <span>DEM Data: Precise elevation modeling</span>
+                    </div>
+                    <div class="strip-item">
+                        <div class="strip-color" style="background-color: #99CC99;"></div>
+                        <span>Soil Data: Accurate soil composition analysis</span>
+                    </div>
+                    <div class="strip-item">
+                        <div class="strip-color" style="background-color: #9999FF;"></div>
+                        <span>Water Data: Hydrological modeling</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-info-circle"></i> Farm Information</h3>
+                    <div id="farmInfo">
+                        <p>Upload local geodata or draw a boundary to see farm information here.</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-chart-bar"></i> Analysis Results</h3>
+                    <div id="analysisResults">
+                        <p>Enhanced analysis results will appear here after uploading local data.</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-seedling"></i> Recommended Crops</h3>
+                    <div id="cropRecommendations">
+                        <p>Precise crop recommendations based on your local data will appear here.</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-cloud-rain"></i> Climate Data</h3>
+                    <div id="climateData">
+                        <p>Local climate insights will appear here.</p>
+                    </div>
+                </div>
+
+                <div class="business-plan-section" id="businessPlanSection" style="display: none;">
+                    <div class="business-plan-header">
+                        <h3 class="sidebar-title"><i class="fas fa-file-alt"></i> Business Plan</h3>
+                        <div class="business-plan-actions">
+                            <button class="btn btn-business" id="downloadPlanBtn">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn btn-business" id="printPlanBtn">
+                                <i class="fas fa-print"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="business-plan-content" id="businessPlanContent">
+                        <!-- Business plan content will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Geodata Upload Modal -->
+    <div class="geodata-modal" id="geodataModal">
+        <div class="geodata-content">
+            <div class="geodata-header">
+                <h3>Upload Local Geodata</h3>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            
+            <div class="data-category">
+                <h4><i class="fas fa-mountain"></i> Elevation Data</h4>
+                <div class="data-item">
+                    <input type="file" id="demInput" accept=".tif,.tiff,.asc,.dem">
+                    <label for="demInput">
+                        <i class="fas fa-file-alt"></i> Digital Elevation Model (DEM)
+                    </label>
+                    <span class="data-status" id="demStatus">Not uploaded</span>
+                </div>
+            </div>
+            
+            <div class="data-category">
+                <h4><i class="fas fa-layer-group"></i> Thematic Data</h4>
+                <div class="data-item">
+                    <input type="file" id="soilInput" accept=".shp,.geojson,.kml,.json">
+                    <label for="soilInput">
+                        <i class="fas fa-seedling"></i> Soil Type Data
+                    </label>
+                    <span class="data-status" id="soilStatus">Not uploaded</span>
+                </div>
+                <div class="data-item">
+                    <input type="file" id="waterInput" accept=".shp,.geojson,.kml,.json">
+                    <label for="waterInput">
+                        <i class="fas fa-tint"></i> Water Sources Data
+                    </label>
+                    <span class="data-status" id="waterStatus">Not uploaded</span>
+                </div>
+                <div class="data-item">
+                    <input type="file" id="landuseInput" accept=".shp,.geojson,.kml,.json">
+                    <label for="landuseInput">
+                        <i class="fas fa-map"></i> Land Use Data
+                    </label>
+                    <span class="data-status" id="landuseStatus">Not uploaded</span>
+                </div>
+            </div>
+            
+            <div class="data-category">
+                <h4><i class="fas fa-cloud-sun"></i> Climate Data</h4>
+                <div class="data-item">
+                    <input type="file" id="rainfallInput" accept=".tif,.tiff,.asc,.csv,.json">
+                    <label for="rainfallInput">
+                        <i class="fas fa-cloud-rain"></i> Rainfall Data
+                    </label>
+                    <span class="data-status" id="rainfallStatus">Not uploaded</span>
+                </div>
+                <div class="data-item">
+                    <input type="file" id="temperatureInput" accept=".tif,.tiff,.asc,.csv,.json">
+                    <label for="temperatureInput">
+                        <i class="fas fa-temperature-high"></i> Temperature Data
+                    </label>
+                    <span class="data-status" id="temperatureStatus">Not uploaded</span>
+                </div>
+            </div>
+            
+            <button class="btn btn-geodata" id="processDataBtn" style="width: 100%; margin-top: 1rem;">
+                <i class="fas fa-cogs"></i> Process Uploaded Data
+            </button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([-33.9249, 18.4241], 13); // Cape Town coordinates
+        
+        // Add base layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+        
+        // Add default layer
+        osmLayer.addTo(map);
+        
+        // Initialize variables
+        let drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // Store uploaded data layers
+        let uploadedDataLayers = new L.FeatureGroup();
+        map.addLayer(uploadedDataLayers);
+        
+        let drawControl = new L.Control.Draw({
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    shapeOptions: {
+                        color: '#27ae60'
+                    }
+                },
+                polyline: false,
+                circle: false,
+                marker: false,
+                circlemarker: false,
+                rectangle: false
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        
+        map.addControl(drawControl);
+        
+        // Geodata modal functionality
+        const geodataModal = document.getElementById('geodataModal');
+        const geodataBtn = document.getElementById('geodataBtn');
+        const closeModal = document.getElementById('closeModal');
+        const processDataBtn = document.getElementById('processDataBtn');
+        
+        geodataBtn.addEventListener('click', function() {
+            geodataModal.style.display = 'flex';
+        });
+        
+        closeModal.addEventListener('click', function() {
+            geodataModal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', function(event) {
+            if (event.target === geodataModal) {
+                geodataModal.style.display = 'none';
+            }
+        });
+        
+        // File upload handling
+        const fileInputs = {
+            dem: document.getElementById('demInput'),
+            soil: document.getElementById('soilInput'),
+            water: document.getElementById('waterInput'),
+            landuse: document.getElementById('landuseInput'),
+            rainfall: document.getElementById('rainfallInput'),
+            temperature: document.getElementById('temperatureInput')
+        };
+        
+        const statusElements = {
+            dem: document.getElementById('demStatus'),
+            soil: document.getElementById('soilStatus'),
+            water: document.getElementById('waterStatus'),
+            landuse: document.getElementById('landuseStatus'),
+            rainfall: document.getElementById('rainfallStatus'),
+            temperature: document.getElementById('temperatureStatus')
+        };
+        
+        // Set up file change events
+        for (const [key, input] of Object.entries(fileInputs)) {
+            input.addEventListener('change', function(e) {
+                if (this.files.length > 0) {
+                    statusElements[key].textContent = 'Uploaded';
+                    statusElements[key].className = 'data-status uploaded';
+                }
+            });
+        }
+        
+        // Process data button
+        processDataBtn.addEventListener('click', function() {
+            // Simulate data processing
+            processDataBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing Data...';
+            processDataBtn.disabled = true;
+            
+            setTimeout(function() {
+                processDataBtn.innerHTML = '<i class="fas fa-check"></i> Data Processed!';
+                processDataBtn.disabled = false;
+                
+                // Enable analysis buttons
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('feasibilityBtn').disabled = false;
+                document.getElementById('designBtn').disabled = false;
+                document.getElementById('businessPlanBtn').disabled = false;
+                
+                // Update status
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Local data processed. You can now generate enhanced plans.';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Close modal after a delay
+                setTimeout(function() {
+                    geodataModal.style.display = 'none';
+                    processDataBtn.innerHTML = '<i class="fas fa-cogs"></i> Process Uploaded Data';
+                    
+                    // Show sample data on map (simulated)
+                    displaySampleData();
+                }, 1500);
+            }, 3000);
+        });
+        
+        // Function to display sample data (simulating real data processing)
+        function displaySampleData() {
+            // Clear any previous data
+            uploadedDataLayers.clearLayers();
+            
+            // Add sample elevation contours (simulated from DEM)
+            const bounds = map.getBounds();
+            const north = bounds.getNorth();
+            const south = bounds.getSouth();
+            const east = bounds.getEast();
+            const west = bounds.getWest();
+            
+            // Generate sample contour lines
+            const contourSpacing = (north - south) / 8;
+            for (let i = 1; i < 8; i++) {
+                const contourElevation = south + i * contourSpacing;
+                const contourPoints = [];
+                const numPoints = 20;
+                
+                for (let j = 0; j < numPoints; j++) {
+                    const lng = west + (east - west) * (j / numPoints);
+                    const latVariation = Math.sin(j / 2) * contourSpacing / 4;
+                    const lat = contourElevation + latVariation;
+                    contourPoints.push([lat, lng]);
+                }
+                
+                // Draw the contour line
+                const contourLine = L.polyline(contourPoints, {
+                    color: '#7f8c8d',
+                    weight: 2,
+                    dashArray: '5,5'
+                }).addTo(uploadedDataLayers);
+                
+                // Add contour label
+                const midPoint = Math.floor(numPoints / 2);
+                L.marker(contourPoints[midPoint], {
+                    icon: L.divIcon({
+                        className: 'contour-label',
+                        html: `${i * 10}m`,
+                        iconSize: [40, 20]
+                    })
+                }).addTo(uploadedDataLayers);
+            }
+            
+            // Add sample soil type areas (simulated)
+            const soilTypes = [
+                { type: 'Sandy Loam', color: '#d2b48c' },
+                { type: 'Clay', color: '#8b4513' },
+                { type: 'Silt', color: '#f5deb3' }
+            ];
+            
+            for (let i = 0; i < 3; i++) {
+                const centerLat = south + (north - south) * (0.2 + i * 0.3);
+                const centerLng = west + (east - west) * (0.2 + i * 0.2);
+                
+                const soilArea = L.circle([centerLat, centerLng], {
+                    radius: 300,
+                    color: soilTypes[i].color,
+                    fillColor: soilTypes[i].color,
+                    fillOpacity: 0.4
+                }).addTo(uploadedDataLayers);
+                
+                soilArea.bindTooltip(soilTypes[i].type, { permanent: false });
+            }
+            
+            // Add sample water sources (simulated)
+            const waterSources = [
+                { lat: south + (north - south) * 0.7, lng: west + (east - west) * 0.3, type: 'Spring' },
+                { lat: south + (north - south) * 0.4, lng: west + (east - west) * 0.6, type: 'Stream' },
+                { lat: south + (north - south) * 0.6, lng: west + (east - west) * 0.8, type: 'Pond' }
+            ];
+            
+            waterSources.forEach(source => {
+                L.marker([source.lat, source.lng], {
+                    icon: L.divIcon({
+                        className: 'water-marker',
+                        html: '<i class="fas fa-tint" style="color: #3498db; font-size: 24px;"></i>',
+                        iconSize: [24, 24]
+                    })
+                }).addTo(uploadedDataLayers).bindTooltip(source.type);
+            });
+            
+            // Update farm info with enhanced data
+            document.getElementById('farmInfo').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Enhanced Farm Analysis</h4>
+                    <p><strong>Elevation Range:</strong> 20m - 80m</p>
+                    <p><strong>Primary Soil Types:</strong> Sandy Loam, Clay, Silt</p>
+                    <p><strong>Water Sources:</strong> Spring, Stream, Pond detected</p>
+                    <p><strong>Slope Analysis:</strong> Mostly 5-15% grade</p>
+                </div>
+            `;
+        }
+        
+        // Event listeners for drawing
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const type = e.layerType;
+            const layer = e.layer;
+            
+            drawnItems.addLayer(layer);
+            
+            // Enable buttons
+            document.getElementById('analyzeBtn').disabled = false;
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('feasibilityBtn').disabled = false;
+            document.getElementById('designBtn').disabled = false;
+            document.getElementById('businessPlanBtn').disabled = false;
+            
+            // Update status
+            document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Boundary drawn. Click "Generate Plan" to analyze.';
+            document.getElementById('status').className = 'status status-success';
+            
+            // Calculate area
+            const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+            const areaHectares = (area / 10000).toFixed(2);
+            
+            // Update farm info
+            document.getElementById('farmInfo').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Farm Details</h4>
+                    <p><strong>Area:</strong> ${areaHectares} hectares</p>
+                    <p><strong>Perimeter:</strong> ${(L.GeometryUtil.length(layer.getLatLngs()[0])/1000).toFixed(2)} km</p>
+                </div>
+            `;
+        });
+        
+        document.getElementById('drawBtn').addEventListener('click', function() {
+            new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+        });
+        
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            drawnItems.clearLayers();
+            uploadedDataLayers.clearLayers();
+            
+            // Disable buttons
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('feasibilityBtn').disabled = true;
+            document.getElementById('designBtn').disabled = true;
+            document.getElementById('businessPlanBtn').disabled = true;
+            
+            // Reset status
+            document.getElementById('status').innerHTML = '<i class="fas fa-info-circle"></i> Upload local data or draw a boundary to begin';
+            document.getElementById('status').className = 'status status-info';
+            
+            // Reset farm info
+            document.getElementById('farmInfo').innerHTML = '<p>Upload local geodata or draw a boundary to see farm information here.</p>';
+            
+            // Reset analysis results
+            document.getElementById('analysisResults').innerHTML = '<p>Enhanced analysis results will appear here after uploading local data.</p>';
+            
+            // Hide business plan
+            document.getElementById('businessPlanSection').style.display = 'none';
+        });
+        
+        // Analysis with enhanced geodata
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing with enhanced geodata...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Enhanced analysis complete!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Update analysis results with enhanced data
+                document.getElementById('analysisResults').innerHTML = `
+                    <div class="result-card">
+                        <h4 class="card-title">Enhanced Soil Analysis</h4>
+                        <p><strong>Soil Composition:</strong> 45% Sandy Loam, 30% Clay, 25% Silt</p>
+                        <p><strong>pH Level:</strong> 6.5-7.2 (Varied by location)</p>
+                        <p><strong>Organic Matter:</strong> 2.8-4.1% (Higher in northern areas)</p>
+                        <p><strong>Drainage:</strong> Excellent in sandy areas, moderate in clay</p>
+                    </div>
+                    <div class="result-card">
+                        <h4 class="card-title">Water Availability Analysis</h4>
+                        <p><strong>Water Sources:</strong> 3 permanent sources identified</p>
+                        <p><strong>Water Retention:</strong> Good in clay areas, moderate elsewhere</p>
+                        <p><strong>Irrigation Potential:</strong> Gravity-fed possible from northern spring</p>
+                        <p><strong>Seasonal Variation:</strong> Stream flow reduces by 40% in dry season</p>
+                    </div>
+                    <div class="result-card">
+                        <h4 class="card-title">Topography Analysis</h4>
+                        <p><strong>Elevation Range:</strong> 20m - 80m</p>
+                        <p><strong>Average Slope:</strong> 8% (Suitable for most crops)</p>
+                        <p><strong>Aspect:</strong> Mostly north-facing (Good sun exposure)</p>
+                        <p><strong>Erosion Risk:</strong> Low to moderate (Manage with contour planting)</p>
+                    </div>
+                `;
+                
+                // Update crop recommendations with enhanced data
+                document.getElementById('cropRecommendations').innerHTML = `
+                    <div class="result-card">
+                        <h4 class="card-title">Precision Crop Recommendations</h4>
+                        <p><strong>Northern Slopes (Sandy Loam):</strong> Grapes, Olives, Lavender</p>
+                        <p><strong>Southern Areas (Clay):</strong> Root vegetables, Cabbage, Kale</p>
+                        <p><strong>Valley Bottom (Silt):</strong> Leafy greens, Herbs, Berries</p>
+                        <p><strong>Water-edge Areas:</strong> Willows for biomass, Watercress</p>
+                        <p><strong>Erosion Control:</strong> Vetiver grass on steeper slopes</p>
+                    </div>
+                `;
+                
+                // Update climate data with enhanced data
+                document.getElementById('climateData').innerHTML = `
+                    <div class="result-card">
+                        <h4 class="card-title">Microclimate Analysis</h4>
+                        <p><strong>Zone:</strong> Mediterranean with local variations</p>
+                        <p><strong>Frost Risk:</strong> Low (Valley bottom 5 days/year, slopes frost-free)</p>
+                        <p><strong>Growing Season:</strong> 285 days (Longer on north-facing slopes)</p>
+                        <p><strong>Heat Units:</strong> Suitable for warm-season crops</p>
+                        <p><strong>Wind Exposure:</strong> Moderate (Consider windbreaks on western edge)</p>
+                    </div>
+                `;
+            }, 3000);
+        });
+        
+        // Enhanced design generation
+        document.getElementById('designBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating precision design with geodata...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Precision farm design generated!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Generate precision design based on geodata
+                generatePrecisionDesign();
+            }, 3000);
+        });
+        
+        // Enhanced business plan generation
+        document.getElementById('businessPlanBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating data-driven business plan...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Data-driven business plan generated!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Show business plan section
+                document.getElementById('businessPlanSection').style.display = 'block';
+                
+                // Generate enhanced business plan content
+                document.getElementById('businessPlanContent').innerHTML = `
+                    <div class="business-section">
+                        <h5>Data-Driven Executive Summary</h5>
+                        <p>This precision agriculture business plan leverages detailed geospatial data to maximize ROI and sustainability. Based on soil analysis, water availability, and topography, we recommend a diversified approach focusing on high-value crops suited to specific microclimates.</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Precision Market Analysis</h5>
+                        <p>Local market analysis combined with site-specific growing potential identifies opportunities in organic herbs, specialty olives, and free-range poultry. The clay soil areas are ideal for root vegetables that command premium prices at local farmers' markets.</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Financial Projections (Enhanced)</h5>
+                        <p><strong>Year 1 Revenue:</strong> R 320,000 (30% higher than generic plan)</p>
+                        <p><strong>Year 2 Revenue:</strong> R 580,000 (precision irrigation increases yield)</p>
+                        <p><strong>Year 3 Revenue:</strong> R 850,000 (diversified product lines mature)</p>
+                        <p><strong>ROI Improvement:</strong> 22% higher than generic planning</p>
+                        <p>Break-even expected in Month 14 due to optimized crop selection.</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Implementation Timeline (Precision)</h5>
+                        <p><strong>Months 1-2:</strong> Site-specific soil amendments based on analysis</p>
+                        <p><strong>Months 3-4:</strong> Precision irrigation installation following topography</p>
+                        <p><strong>Months 5-6:</strong> Planting optimized for each soil type and microclimate</p>
+                        <p><strong>Months 7-12:</strong> Value-added product development based on yield projections</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Risk Mitigation</h5>
+                        <p>Diversified crop selection based on soil types reduces climate risk. Water management plan based on actual sources and topography ensures drought resilience. Precision farming reduces input costs by 25%.</p>
+                    </div>
+                `;
+            }, 3000);
+        });
+        
+        // Enhanced feasibility study
+        document.getElementById('feasibilityBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating precision feasibility study...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Precision feasibility study generated!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Update analysis results with enhanced feasibility data
+                document.getElementById('analysisResults').innerHTML += `
+                    <div class="result-card">
+                        <h4 class="card-title">Precision Feasibility Study</h4>
+                        <p><strong>Overall Viability:</strong> Excellent (35% higher than generic assessment)</p>
+                        <p><strong>ROI Potential:</strong> 42% after 3 years (precision agriculture benefits)</p>
+                        <p><strong>Risk Assessment:</strong> Low (diversification, water security, soil suitability)</p>
+                        <p><strong>Recommended Actions:</strong> 
+                            <ul>
+                                <li>Drip irrigation in sandy areas</li>
+                                <li>Water harvesting from natural springs</li>
+                                <li>Compost amendments in clay areas</li>
+                                <li>Windbreaks on western slopes</li>
+                            </ul>
+                        </p>
+                    </div>
+                `;
+            }, 3000);
+        });
+        
+        // Function to generate precision design based on geodata
+        function generatePrecisionDesign() {
+            // Get the boundary layer if exists
+            let boundaryLayer = null;
+            drawnItems.eachLayer(function(layer) {
+                if (layer instanceof L.Polygon) {
+                    boundaryLayer = layer;
+                }
+            });
+            
+            // If no boundary drawn, use map bounds
+            let bounds;
+            if (boundaryLayer) {
+                bounds = boundaryLayer.getBounds();
+            } else {
+                bounds = map.getBounds();
+            }
+            
+            const north = bounds.getNorth();
+            const south = bounds.getSouth();
+            const east = bounds.getEast();
+            const west = bounds.getWest();
+            
+            // Generate precision design elements based on geodata
+            const designElements = new L.FeatureGroup();
+            
+            // Contour-aligned planting strips
+            const contourSpacing = (north - south) / 10;
+            const stripColors = ['#FF9999', '#99CC99', '#9999FF'];
+            const stripTypes = ['Chicken Rotation Strips', 'Flora Feed Forest Strips', 'Water Retention Strips'];
+            
+            for (let i = 1; i < 9; i++) {
+                const stripTop = south + i * contourSpacing;
+                const stripBottom = south + (i + 1) * contourSpacing;
+                
+                // Create wavy strip boundaries that follow contours
+                const topPoints = [];
+                const bottomPoints = [];
+                const numPoints = 20;
+                
+                for (let j = 0; j < numPoints; j++) {
+                    const lng = west + (east - west) * (j / numPoints);
+                    
+                    // Add variation to follow contours
+                    const topVariation = Math.sin(j / 2) * contourSpacing / 4;
+                    const bottomVariation = Math.sin(j / 2 + 1) * contourSpacing / 4;
+                    
+                    topPoints.push([stripTop + topVariation, lng]);
+                    bottomPoints.push([stripBottom + bottomVariation, lng]);
+                }
+                
+                // Reverse the bottom points to create a polygon
+                const stripPoints = topPoints.concat(bottomPoints.reverse());
+                
+                // Draw the strip
+                const strip = L.polygon(stripPoints, {
+                    color: stripColors[i % 3],
+                    fillColor: stripColors[i % 3],
+                    fillOpacity: 0.4,
+                    weight: 1
+                }).addTo(designElements);
+                
+                // Add strip label
+                const midPoint = Math.floor(numPoints / 2);
+                const labelPoint = topPoints[midPoint];
+                
+                strip.bindTooltip(stripTypes[i % 3], {
+                    permanent: false,
+                    direction: 'center',
+                    className: 'strip-label'
+                });
+            }
+            
+            // Add water management features based on water source data
+            const waterManagementPoints = [
+                { lat: south + (north - south) * 0.7, lng: west + (east - west) * 0.3, type: 'Storage Pond' },
+                { lat: south + (north - south) * 0.4, lng: west + (east - west) * 0.6, type: 'Irrigation Channel' },
+                { lat: south + (north - south) * 0.6, lng: west + (east - west) * 0.8, type: 'Swale' }
+            ];
+            
+            waterManagementPoints.forEach(point => {
+                L.circleMarker([point.lat, point.lng], {
+                    radius: 8,
+                    color: '#3498db',
+                    fillColor: '#3498db',
+                    fillOpacity: 0.7
+                }).addTo(designElements).bindTooltip(point.type);
+            });
+            
+            // Add specialized growing areas based on soil data
+            const specialtyAreas = [
+                { lat: south + (north - south) * 0.3, lng: west + (east - west) * 0.2, type: 'Medicinal Herb Garden', radius: 80 },
+                { lat: south + (north - south) * 0.5, lng: west + (east - west) * 0.7, type: 'Berry Patch', radius: 60 },
+                { lat: south + (north - south) * 0.8, lng: west + (east - west) * 0.4, type: 'Greenhouse Site', radius: 50 }
+            ];
+            
+            specialtyAreas.forEach(area => {
+                L.circle([area.lat, area.lng], {
+                    radius: area.radius,
+                    color: '#9b59b6',
+                    fillColor: '#9b59b6',
+                    fillOpacity: 0.3,
+                    weight: 2
+                }).addTo(designElements).bindTooltip(area.type);
+            });
+            
+            // Add design elements to map
+            designElements.addTo(map);
+            
+            // Add design elements to uploaded data layers for management
+            designElements.eachLayer(function(layer) {
+                uploadedDataLayers.addLayer(layer);
+            });
+        }
+        
+        // Basemap control
+        document.querySelectorAll('input[name="basemap"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'osm') {
+                    map.removeLayer(satelliteLayer);
+                    osmLayer.addTo(map);
+                } else if (this.value === 'satellite') {
+                    map.removeLayer(osmLayer);
+                    satelliteLayer.addTo(map);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

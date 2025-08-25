@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimateChic - Complete Farm Management System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #27ae60;
+            --primary-dark: #219a52;
+            --secondary: #3498db;
+            --accent: #9b59b6;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --white: #ffffff;
+            --gray: #95a5a6;
+            --border-radius: 12px;
+            --shadow: 0 8px 32px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-container {
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            height: 80px;
+            width: auto;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: white;
+            padding: 5px;
+        }
+
+        .header-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            min-height: 600px;
+        }
+
+        .map-section {
+            position: relative;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 3px solid var(--white);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #2980b9 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent) 0%, #8e44ad 100%);
+        }
+
+        .btn-business {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+        }
+
+        .sidebar {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .status-info {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--secondary);
+            border-left: 4px solid var(--secondary);
+        }
+
+        .status-success {
+            background: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .status-warning {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning);
+            border-left: 4px solid var(--warning);
+        }
+
+        .result-card {
+            background: var(--white);
+            padding: 1.2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--dark);
+        }
+
+        .operations-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .operation-card {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .operation-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 0.2rem;
+        }
+
+        .status-on-track {
+            background: rgba(46, 204, 113, 0.2);
+            color: var(--success);
+        }
+
+        .status-delayed {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--danger);
+        }
+
+        .status-behind {
+            background: rgba(243, 156, 18, 0.2);
+            color: var(--warning);
+        }
+
+        .file-upload {
+            margin: 1rem 0;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: block;
+            padding: 0.8rem;
+            background: var(--light);
+            border: 2px dashed var(--gray);
+            border-radius: var(--border-radius);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .file-label:hover {
+            border-color: var(--primary);
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .business-plan-section {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f9f9f9;
+            border-radius: var(--border-radius);
+            border-left: 4px solid #e67e22;
+        }
+
+        .business-plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .business-plan-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .business-plan-content {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: white;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .business-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .business-section h5 {
+            color: #e67e22;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .business-section p {
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                max-height: none;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+
+        .leaflet-draw-toolbar {
+            margin-top: 12px;
+            margin-left: 12px;
+        }
+
+        .leaflet-draw-toolbar a {
+            background-color: var(--white);
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .leaflet-draw-toolbar a:hover {
+            background-color: #f4f4f4;
+        }
+
+        .strip-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+        }
+
+        .strip-info h4 {
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .strip-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .strip-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="https://images.unsplash.com/photo-1618477388957-7a27d6e1adf3?w=200&h=200&fit=crop&crop=center" alt="ClimateChic Logo" class="logo">
+            </div>
+            <h1 class="header-title">ClimateChic Farm Management</h1>
+            <p class="header-subtitle">Agro-Ecological Planning & Monitoring System</p>
+        </div>
+
+        <div class="main-content">
+            <div class="map-section">
+                <div class="controls">
+                    <button class="btn" id="drawBtn">
+                        <i class="fas fa-draw-polygon"></i> Draw Boundary
+                    </button>
+                    <button class="btn" id="analyzeBtn" disabled>
+                        <i class="fas fa-brain"></i> Generate Plan
+                    </button>
+                    <button class="btn btn-warning" id="clearBtn">
+                        <i class="fas fa-trash"></i> Clear Map
+                    </button>
+                    <button class="btn btn-secondary" id="uploadBtn">
+                        <i class="fas fa-upload"></i> Upload Shapefile
+                    </button>
+                    <button class="btn btn-accent" id="saveBtn" disabled>
+                        <i class="fas fa-download"></i> Save Boundary
+                    </button>
+                    <button class="btn btn-accent" id="feasibilityBtn" disabled>
+                        <i class="fas fa-calculator"></i> Generate Feasibility
+                    </button>
+                    <button class="btn btn-accent" id="designBtn" disabled>
+                        <i class="fas fa-project-diagram"></i> Generate Farm Design
+                    </button>
+                    <button class="btn btn-business" id="businessPlanBtn" disabled>
+                        <i class="fas fa-file-alt"></i> Generate Business Plan
+                    </button>
+                    <button class="btn btn-secondary" id="saveDesignBtn" disabled>
+                        <i class="fas fa-save"></i> Save Design
+                    </button>
+                </div>
+                
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+                
+                <div id="status" class="status status-info">
+                    <i class="fas fa-info-circle"></i> Click "Draw Boundary" to start planning your farm
+                </div>
+
+                <input type="file" id="shapefileInput" accept=".geojson,.json,.shp,.kml" multiple class="file-input">
+                
+                <div class="operations-grid">
+                    <div class="operation-card">
+                        <div class="operation-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h3>Operations</h3>
+                        <p>Gantt Chart & Calendar</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 65%;"></div>
+                        </div>
+                        <span class="status-indicator status-on-track">On Track</span>
+                    </div>
+                    
+                    <div class="operation-card">
+                        <div class="operation-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <h3>Accounting</h3>
+                        <p>Expenses & Revenue</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%;"></div>
+                        </div>
+                        <span class="status-indicator status-behind">Needs Update</span>
+                    </div>
+                </div>
+
+                <div class="strip-info">
+                    <h4>Strip Legend</h4>
+                    <div class="strip-item">
+                        <div class="strip-color" style="background-color: #FF9999;"></div>
+                        <span>Chicken Rotation Strips</span>
+                    </div>
+                    <div class="strip-item">
+                        <div class="strip-color" style="background-color: #99CC99;"></div>
+                        <span>Flora Feed Forest Strips</span>
+                    </div>
+                    <div class="strip-item">
+                        <div class="strip-color" style="background-color: #9999FF;"></div>
+                        <span>Water Retention Strips</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-info-circle"></i> Farm Information</h3>
+                    <div id="farmInfo">
+                        <p>Draw a boundary to see farm information here.</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-chart-bar"></i> Analysis Results</h3>
+                    <div id="analysisResults">
+                        <p>Analysis results will appear here after generating a plan.</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-seedling"></i> Recommended Crops</h3>
+                    <div id="cropRecommendations">
+                        <p>Crop recommendations will appear here.</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-cloud-rain"></i> Climate Data</h3>
+                    <div id="climateData">
+                        <p>Climate data will appear here.</p>
+                    </div>
+                </div>
+
+                <div class="business-plan-section" id="businessPlanSection" style="display: none;">
+                    <div class="business-plan-header">
+                        <h3 class="sidebar-title"><i class="fas fa-file-alt"></i> Business Plan</h3>
+                        <div class="business-plan-actions">
+                            <button class="btn btn-business" id="downloadPlanBtn">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn btn-business" id="printPlanBtn">
+                                <i class="fas fa-print"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="business-plan-content" id="businessPlanContent">
+                        <!-- Business plan content will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([-33.9249, 18.4241], 13); // Cape Town coordinates
+        
+        // Add base layers
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }).addTo(map);
+
+        // Initialize variables
+        let drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        let drawControl = new L.Control.Draw({
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    shapeOptions: {
+                        color: '#27ae60'
+                    }
+                },
+                polyline: false,
+                circle: false,
+                marker: false,
+                circlemarker: false,
+                rectangle: false
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        
+        map.addControl(drawControl);
+        
+        // Event listeners
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const type = e.layerType;
+            const layer = e.layer;
+            
+            drawnItems.addLayer(layer);
+            
+            // Enable buttons
+            document.getElementById('analyzeBtn').disabled = false;
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('feasibilityBtn').disabled = false;
+            document.getElementById('designBtn').disabled = false;
+            document.getElementById('businessPlanBtn').disabled = false;
+            
+            // Update status
+            document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Boundary drawn. Click "Generate Plan" to analyze.';
+            document.getElementById('status').className = 'status status-success';
+            
+            // Calculate area
+            const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+            const areaHectares = (area / 10000).toFixed(2);
+            
+            // Update farm info
+            document.getElementById('farmInfo').innerHTML = `
+                <div class="result-card">
+                    <h4 class="card-title">Farm Details</h4>
+                    <p><strong>Area:</strong> ${areaHectares} hectares</p>
+                    <p><strong>Perimeter:</strong> ${(L.GeometryUtil.length(layer.getLatLngs()[0])/1000).toFixed(2)} km</p>
+                </div>
+            `;
+        });
+        
+        document.getElementById('drawBtn').addEventListener('click', function() {
+            new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+        });
+        
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            drawnItems.clearLayers();
+            
+            // Disable buttons
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('feasibilityBtn').disabled = true;
+            document.getElementById('designBtn').disabled = true;
+            document.getElementById('businessPlanBtn').disabled = true;
+            document.getElementById('saveDesignBtn').disabled = true;
+            
+            // Reset status
+            document.getElementById('status').innerHTML = '<i class="fas fa-info-circle"></i> Click "Draw Boundary" to start planning your farm';
+            document.getElementById('status').className = 'status status-info';
+            
+            // Reset farm info
+            document.getElementById('farmInfo').innerHTML = '<p>Draw a boundary to see farm information here.</p>';
+            
+            // Reset analysis results
+            document.getElementById('analysisResults').innerHTML = '<p>Analysis results will appear here after generating a plan.</p>';
+            
+            // Hide business plan
+            document.getElementById('businessPlanSection').style.display = 'none';
+        });
+        
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            // Simulate analysis
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing farm data...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Analysis complete!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Update analysis results
+                document.getElementById('analysisResults').innerHTML = `
+                    <div class="result-card">
+                        <h4 class="card-title">Soil Analysis</h4>
+                        <p><strong>Soil Type:</strong> Sandy Loam</p>
+                        <p><strong>pH Level:</strong> 6.8 (Optimal)</p>
+                        <p><strong>Organic Matter:</strong> 3.2%</p>
+                    </div>
+                    <div class="result-card">
+                        <h4 class="card-title">Water Availability</h4>
+                        <p><strong>Annual Rainfall:</strong> 650mm</p>
+                        <p><strong>Water Retention:</strong> Moderate</p>
+                        <p><strong>Irrigation Potential:</strong> High</p>
+                    </div>
+                `;
+                
+                // Update crop recommendations
+                document.getElementById('cropRecommendations').innerHTML = `
+                    <div class="result-card">
+                        <h4 class="card-title">Recommended Crops</h4>
+                        <p><strong>Primary:</strong> Olives, Grapes, Lavender</p>
+                        <p><strong>Secondary:</strong> Rosemary, Thyme, Sage</p>
+                        <p><strong>Cover Crops:</strong> Clover, Vetch, Rye</p>
+                    </div>
+                `;
+                
+                // Update climate data
+                document.getElementById('climateData').innerHTML = `
+                    <div class="result-card">
+                        <h4 class="card-title">Climate Information</h4>
+                        <p><strong>Zone:</strong> Mediterranean</p>
+                        <p><strong>Frost Days:</strong> 5 per year</p>
+                        <p><strong>Growing Season:</strong> 285 days</p>
+                    </div>
+                `;
+                
+                // Enable design button
+                document.getElementById('designBtn').disabled = false;
+            }, 2000);
+        });
+        
+        document.getElementById('designBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating farm design with contour-aligned strips...';
+            
+            // Clear any existing strips
+            drawnItems.eachLayer(function(layer) {
+                if (layer.options && layer.options.className === 'contour-strip') {
+                    drawnItems.removeLayer(layer);
+                }
+            });
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Farm design generated with contour-aligned strips!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Enable save design button
+                document.getElementById('saveDesignBtn').disabled = false;
+                
+                // Generate contour-aligned strips
+                generateContourAlignedStrips();
+            }, 2000);
+        });
+        
+        document.getElementById('businessPlanBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating business plan...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Business plan generated!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Show business plan section
+                document.getElementById('businessPlanSection').style.display = 'block';
+                
+                // Generate business plan content
+                document.getElementById('businessPlanContent').innerHTML = `
+                    <div class="business-section">
+                        <h5>Executive Summary</h5>
+                        <p>This business plan outlines the establishment and operation of a sustainable agro-ecological farm focusing on Mediterranean crops and poultry integration.</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Market Analysis</h5>
+                        <p>Growing demand for organic, sustainably produced herbs, olives, and free-range poultry products. Local market shows 15% annual growth in these sectors.</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Financial Projections</h5>
+                        <p><strong>Year 1 Revenue:</strong> R 250,000</p>
+                        <p><strong>Year 2 Revenue:</strong> R 450,000</p>
+                        <p><strong>Year 3 Revenue:</strong> R 650,000</p>
+                        <p>Break-even expected in Month 18 of operation.</p>
+                    </div>
+                    
+                    <div class="business-section">
+                        <h5>Implementation Timeline</h5>
+                        <p><strong>Months 1-3:</strong> Soil preparation, fencing, irrigation</p>
+                        <p><strong>Months 4-6:</strong> Planting of primary crops, chicken coop construction</p>
+                        <p><strong>Months 7-12:</strong> Expansion, secondary crops, market establishment</p>
+                    </div>
+                `;
+            }, 2000);
+        });
+        
+        document.getElementById('uploadBtn').addEventListener('click', function() {
+            document.getElementById('shapefileInput').click();
+        });
+        
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Farm boundary saved successfully!';
+            document.getElementById('status').className = 'status status-success';
+        });
+        
+        document.getElementById('saveDesignBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Farm design saved successfully!';
+            document.getElementById('status').className = 'status status-success';
+        });
+        
+        document.getElementById('feasibilityBtn').addEventListener('click', function() {
+            document.getElementById('status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating feasibility study...';
+            
+            setTimeout(function() {
+                document.getElementById('status').innerHTML = '<i class="fas fa-check-circle"></i> Feasibility study generated!';
+                document.getElementById('status').className = 'status status-success';
+                
+                // Update analysis results with feasibility data
+                document.getElementById('analysisResults').innerHTML += `
+                    <div class="result-card">
+                        <h4 class="card-title">Feasibility Study</h4>
+                        <p><strong>Overall Viability:</strong> High</p>
+                        <p><strong>ROI Potential:</strong> 28% after 3 years</p>
+                        <p><strong>Risk Assessment:</strong> Moderate (drought, market fluctuations)</p>
+                        <p><strong>Recommended Actions:</strong> Drip irrigation, crop insurance, diversified marketing</p>
+                    </div>
+                `;
+            }, 2000);
+        });
+        
+        // Function to generate contour-aligned strips
+        function generateContourAlignedStrips() {
+            // Get the boundary layer
+            let boundaryLayer = null;
+            drawnItems.eachLayer(function(layer) {
+                if (layer instanceof L.Polygon) {
+                    boundaryLayer = layer;
+                }
+            });
+            
+            if (!boundaryLayer) return;
+            
+            const latlngs = boundaryLayer.getLatLngs()[0];
+            const center = boundaryLayer.getBounds().getCenter();
+            
+            // Generate simulated elevation data
+            const elevationData = generateSimulatedElevationData(latlngs, center);
+            
+            // Generate contour lines based on elevation
+            const contourLines = generateContourLines(elevationData, latlngs);
+            
+            // Draw contour lines on the map
+            contourLines.forEach(contour => {
+                L.polyline(contour, {color: '#888', weight: 1, opacity: 0.7}).addTo(map);
+            });
+            
+            // Generate strips that follow the contours
+            const strips = generateContourStrips(contourLines, latlngs);
+            
+            // Draw the strips on the map
+            strips.forEach((strip, index) => {
+                const stripColor = index % 3 === 0 ? '#FF9999' : 
+                                 index % 3 === 1 ? '#99CC99' : '#9999FF';
+                
+                L.polygon(strip, {
+                    color: stripColor,
+                    fillColor: stripColor,
+                    fillOpacity: 0.5,
+                    className: 'contour-strip'
+                }).addTo(map);
+            });
+        }
+        
+        // Function to generate simulated elevation data
+        function generateSimulatedElevationData(boundaryLatLngs, center) {
+            const elevationData = [];
+            const centerLat = center.lat;
+            const centerLng = center.lng;
+            
+            // Create a grid of points within the boundary with simulated elevation
+            const bounds = L.latLngBounds(boundaryLatLngs);
+            const north = bounds.getNorth();
+            const south = bounds.getSouth();
+            const east = bounds.getEast();
+            const west = bounds.getWest();
+            
+            const gridSize = 20;
+            const latStep = (north - south) / gridSize;
+            const lngStep = (east - west) / gridSize;
+            
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const lat = south + i * latStep;
+                    const lng = west + j * lngStep;
+                    
+                    // Check if the point is inside the boundary
+                    const point = L.latLng(lat, lng);
+                    if (isPointInPolygon(point, boundaryLatLngs)) {
+                        // Simulate elevation based on distance from center and some noise
+                        const distanceFromCenter = Math.sqrt(
+                            Math.pow(lat - centerLat, 2) + 
+                            Math.pow(lng - centerLng, 2)
+                        );
+                        
+                        // Create more realistic elevation with hills and valleys
+                        const elevation = 100 + 
+                                        50 * Math.sin(lat * 10) + 
+                                        30 * Math.cos(lng * 10) -
+                                        distanceFromCenter * 5000 +
+                                        Math.random() * 10;
+                        
+                        elevationData.push({
+                            lat: lat,
+                            lng: lng,
+                            elevation: elevation
+                        });
+                    }
+                }
+            }
+            
+            return elevationData;
+        }
+        
+        // Function to generate contour lines from elevation data
+        function generateContourLines(elevationData, boundaryLatLngs) {
+            const contours = [];
+            const contourInterval = 5; // meters
+            
+            // Find min and max elevation
+            let minElevation = Infinity;
+            let maxElevation = -Infinity;
+            
+            elevationData.forEach(point => {
+                if (point.elevation < minElevation) minElevation = point.elevation;
+                if (point.elevation > maxElevation) maxElevation = point.elevation;
+            });
+            
+            // Generate contours at intervals
+            for (let level = minElevation; level <= maxElevation; level += contourInterval) {
+                const contourLine = [];
+                
+                // Simple contour generation - in a real application, you would use
+                // a more sophisticated algorithm like Marching Squares
+                elevationData.forEach(point => {
+                    if (Math.abs(point.elevation - level) < 0.5) {
+                        contourLine.push([point.lat, point.lng]);
+                    }
+                });
+                
+                if (contourLine.length > 0) {
+                    contours.push(contourLine);
+                }
+            }
+            
+            return contours;
+        }
+        
+        // Function to generate strips that follow contours
+        function generateContourStrips(contourLines, boundaryLatLngs) {
+            const strips = [];
+            
+            // Create strips between contour lines
+            for (let i = 0; i < contourLines.length - 1; i += 2) {
+                const stripPoints = [];
+                
+                // Add points from current contour
+                contourLines[i].forEach(point => {
+                    stripPoints.push([point[0], point[1]]);
+                });
+                
+                // Add points from next contour in reverse order
+                const reversedNextContour = [...contourLines[i + 1]].reverse();
+                reversedNextContour.forEach(point => {
+                    stripPoints.push([point[0], point[1]]);
+                });
+                
+                // Close the polygon
+                if (stripPoints.length > 0) {
+                    stripPoints.push(stripPoints[0]);
+                }
+                
+                strips.push(stripPoints);
+            }
+            
+            return strips;
+        }
+        
+        // Helper function to check if a point is inside a polygon
+        function isPointInPolygon(point, vs) {
+            // ray-casting algorithm based on
+            // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html
+            
+            const x = point.lat, y = point.lng;
+            
+            let inside = false;
+            for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                const xi = vs[i].lat, yi = vs[i].lng;
+                const xj = vs[j].lat, yj = vs[j].lng;
+                
+                const intersect = ((yi > y) != (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        }
+    </script>
+</body>
+</html>
